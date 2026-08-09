@@ -14,7 +14,6 @@
  ***************************************************************************************/
 
 #include <assert.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -23,9 +22,9 @@
 #include <time.h>
 
 // this should be enough
-static char buf[65536] = { };
-static char c_expr_buf[65536] = { };
-static char code_buf[65536 + 128] = { }; // a little larger than `buf`
+static char buf[256] = { };
+static char c_expr_buf[256] = { };
+static char code_buf[256 + 128] = { }; // a little larger than `buf`
 static char* code_format = "#include <stdio.h>\n"
                            "int main() { "
                            "  unsigned result = %s; "
@@ -42,39 +41,72 @@ static uint32_t choose(uint32_t n)
     return (uint32_t)rand() % n;
 }
 
-static void append(char* dst, size_t size, size_t* position, const char* format, ...)
+static void append_char(char* dst, size_t size, size_t* position, char ch)
 {
     if (overflow) {
         return;
     }
 
-    va_list args;
-    va_start(args, format);
-    int written = vsnprintf(dst + *position, size - *position, format, args);
-    va_end(args);
-
-    if (written < 0 || (size_t)written >= size - *position) {
+    if (*position >= size - 1) {
         overflow = true;
         return;
     }
 
-    *position += (size_t)written;
+    dst[*position] = ch;
+    (*position)++;
+    dst[*position] = '\0';
+}
+
+// static void append_text(char* dst, size_t size, size_t* position, const char* text)
+// {
+//     if (overflow) {
+//         return;
+//     }
+
+//     size_t length = strlen(text);
+//     if (length >= size - *position) {
+//         overflow = true;
+//         return;
+//     }
+
+//     memcpy(dst + *position, text, length);
+//     dst[*position + length] = '\0';
+//     *position += length;
+// }
+
+static void append_uint(char* dst, size_t size, size_t* position, uint32_t number)
+{
+    static char digits[10];
+    int count = 0;
+
+    do {
+        digits[count] = '0' + number % 10;
+        count++;
+        number /= 10;
+    } while (number != 0);
+
+    for (int i = count - 1; i >= 0; i--) {
+        append_char(dst, size, position, digits[i]);
+    }
 }
 
 static void gen_space()
 {
     int count = (int)choose(3);
     for (int i = 0; i < count; i++) {
-        append(buf, sizeof(buf), &buf_pos, " ");
-        append(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, " ");
+        append_char(buf, sizeof(buf), &buf_pos, ' ');
+        append_char(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, ' ');
     }
 }
 
 static void gen_num()
 {
     uint32_t number = ((uint32_t)rand() << 16) ^ (uint32_t)rand();
-    append(buf, sizeof(buf), &buf_pos, "%u", number);
-    append(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, "((unsigned)%u)", number);
+    append_uint(buf, sizeof(buf), &buf_pos, number);
+
+    // append_text(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, "((unsigned)");
+    append_uint(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, number);
+    append_char(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, 'u');
 }
 
 static void gen_rand_op()
@@ -83,14 +115,14 @@ static void gen_rand_op()
     char op = operators[choose(sizeof(operators) / sizeof(operators[0]))];
 
     gen_space();
-    append(buf, sizeof(buf), &buf_pos, "%c", op);
-    append(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, "%c", op);
+    append_char(buf, sizeof(buf), &buf_pos, op);
+    append_char(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, op);
     gen_space();
 }
 
 static void gen_expr(int depth)
 {
-    if (depth >= 4) {
+    if (depth >= 6) {
         gen_num();
         return;
     }
@@ -100,13 +132,13 @@ static void gen_expr(int depth)
         gen_num();
         break;
     case 1:
-        append(buf, sizeof(buf), &buf_pos, "(");
-        append(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, "(");
+        append_char(buf, sizeof(buf), &buf_pos, '(');
+        append_char(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, '(');
         gen_space();
         gen_expr(depth + 1);
         gen_space();
-        append(buf, sizeof(buf), &buf_pos, ")");
-        append(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, ")");
+        append_char(buf, sizeof(buf), &buf_pos, ')');
+        append_char(c_expr_buf, sizeof(c_expr_buf), &c_expr_pos, ')');
         break;
     default:
         gen_expr(depth + 1);
@@ -130,8 +162,7 @@ static bool gen_rand_expr()
 
 int main(int argc, char* argv[])
 {
-    int seed = time(0);
-    srand(seed);
+    srand(time(0));
     int loop = 1;
     if (argc > 1) {
         sscanf(argv[1], "%d", &loop);
