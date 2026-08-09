@@ -45,89 +45,23 @@ static char* rl_gets()
     return line_read;
 }
 
-static int cmd_c(char* args)
-{
-    cpu_exec(-1);
-    return 0;
-}
-
-static int cmd_q(char* args)
-{
-    nemu_state.state = NEMU_QUIT;
-    return -1;
-}
-
 static int cmd_help(char* args);
 
-static int cmd_si(char* args)
-{
-    int n = 1;
-    if (args != NULL) {
-        n = atoi(args);
-    }
-    cpu_exec(n);
-    return 0;
-}
+static int cmd_c(char* args);
 
-static int cmd_info(char* args)
-{
-    if (args == NULL) {
-        printf("Please specify the type of information to display.\n");
-        return 0;
-    }
+static int cmd_q(char* args);
 
-    if (strcmp(args, "r") == 0) {
-        isa_reg_display();
-    } else {
-        printf("Unknown info subcommand '%s'.\n", args);
-    }
+static int cmd_si(char* args);
 
-    return 0;
-}
+static int cmd_info(char* args);
 
-static int cmd_x(char* args)
-{
-    if (args == NULL) {
-        printf("Usage: x N EXPR\n");
-        return 0;
-    }
+static int cmd_x(char* args);
 
-    char* count_str = strtok(args, " ");
-    char* addr_str = strtok(NULL, " ");
-    char* extra = strtok(NULL, " ");
-    if (count_str == NULL || addr_str == NULL || extra != NULL) {
-        printf("Usage: x N EXPR\n");
-        return 0;
-    }
+static int cmd_p(char* args);
 
-    char* end = NULL;
-    errno = 0;
-    long count = strtol(count_str, &end, 10);
-    if (errno != 0 || *count_str == '\0' || *end != '\0' || count <= 0) {
-        printf("x: N must be a positive decimal integer.\n");
-        return 0;
-    }
+static int cmd_w(char* args);
 
-    if (addr_str[0] == '-') {
-        printf("x: EXPR must be a hexadecimal address.\n");
-        return 0;
-    }
-
-    errno = 0;
-    unsigned long long raw_addr = strtoull(addr_str, &end, 16);
-    vaddr_t addr = (vaddr_t)raw_addr;
-    if (errno != 0 || *addr_str == '\0' || *end != '\0' || (unsigned long long)addr != raw_addr) {
-        printf("x: EXPR must be a hexadecimal address in the guest address range.\n");
-        return 0;
-    }
-
-    for (long i = 0; i < count; i++, addr += 4) {
-        uint32_t data = (uint32_t)vaddr_read(addr, 4);
-        printf(FMT_WORD ": 0x%08" PRIx32 "\n", addr, data);
-    }
-
-    return 0;
-}
+static int cmd_d(char* args);
 
 static struct {
     const char* name;
@@ -140,12 +74,27 @@ static struct {
     { "si", "Step N instructions exactly. If N is not given, step 1 instruction.", cmd_si },
     { "info", "Print program status: info r", cmd_info },
     { "x", "Scan memory: x N EXPR", cmd_x },
+    { "p", "Evaluate expression: p EXPR", cmd_p },
+    { "w", "Set a watchpoint: w EXPR", cmd_w },
+    { "d", "Delete a watchpoint: d N", cmd_d },
 
     /* TODO: Add more commands */
 
 };
 
 #define NR_CMD ARRLEN(cmd_table)
+
+static int cmd_c(char* args)
+{
+    cpu_exec(-1);
+    return 0;
+}
+
+static int cmd_q(char* args)
+{
+    nemu_state.state = NEMU_QUIT;
+    return -1;
+}
 
 static int cmd_help(char* args)
 {
@@ -167,6 +116,141 @@ static int cmd_help(char* args)
         }
         printf("Unknown command '%s'\n", arg);
     }
+    return 0;
+}
+
+static int cmd_si(char* args)
+{
+    int n = 1;
+    if (args != NULL) {
+        n = atoi(args);
+    }
+    cpu_exec(n);
+    return 0;
+}
+
+static int cmd_info(char* args)
+{
+    if (args == NULL) {
+        printf("Please specify the type of information to display.\n");
+        return 0;
+    }
+
+    if (strcmp(args, "r") == 0) {
+        isa_reg_display();
+    } else if (strcmp(args, "w") == 0) {
+        print_watchpoints();
+    } else {
+        printf("Unknown info subcommand '%s'.\n", args);
+    }
+
+    return 0;
+}
+
+static int cmd_x(char* args)
+{
+    if (args == NULL) {
+        printf("Usage: x N EXPR\n");
+        return 0;
+    }
+
+    char* count_str = args;
+    char* expr_str = args + strcspn(args, " \t");
+
+    if (*expr_str == '\0') {
+        printf("Usage: x N EXPR\n");
+        return 0;
+    }
+
+    /* 把N和EXPR分开 */
+    *expr_str = '\0';
+    expr_str++;
+
+    /* 跳过N与表达式之间剩余的空白 */
+    expr_str += strspn(expr_str, " \t");
+
+    if (*expr_str == '\0') {
+        printf("Usage: x N EXPR\n");
+        return 0;
+    }
+
+    char* end = NULL;
+    errno = 0;
+    long count = strtol(count_str, &end, 10);
+    if (errno != 0 || *count_str == '\0' || *end != '\0' || count <= 0) {
+        printf("x: N must be a positive decimal integer.\n");
+        return 0;
+    }
+
+    errno = 0;
+    bool success = true;
+    vaddr_t addr = expr(expr_str, &success);
+    if (!success) {
+        printf("x: Failed to evaluate expression '%s'.\n", expr_str);
+        return 0;
+    }
+
+    for (long i = 0; i < count; i++, addr += 4) {
+        word_t data = vaddr_read(addr, 4);
+        printf(FMT_WORD ": 0x%08" PRIx32 "\n", addr, data);
+    }
+
+    return 0;
+}
+
+static int cmd_p(char* args)
+{
+    if (args == NULL) {
+        printf("Usage: p EXPR\n");
+        return 0;
+    }
+
+    bool success = true;
+    word_t result = expr(args, &success);
+    if (!success) {
+        printf("p: Failed to evaluate expression '%s'.\n", args);
+        return 0;
+    }
+
+    printf(FMT_WORD "\n", result);
+    return 0;
+}
+
+static int cmd_w(char* args)
+{
+    if (args == NULL) {
+        printf("Usage: w EXPR\n");
+        return 0;
+    }
+
+    bool success = true;
+    word_t result = expr(args, &success);
+    if (!success) {
+        printf("w: Failed to evaluate expression '%s'.\n", args);
+        return 0;
+    }
+
+    WP* wp = new_wp(args, result);
+    printf("Watchpoint %d set on expression '%s' with initial value " FMT_WORD ".\n", wp->NO, wp->expr, wp->old_val);
+    return 0;
+}
+
+static int cmd_d(char* args)
+{
+    if (args == NULL) {
+        printf("Usage: d N\n");
+        return 0;
+    }
+
+    char* end = NULL;
+    errno = 0;
+    long no = strtol(args, &end, 10);
+    if (errno != 0 || *args == '\0' || *end != '\0' || no < 0 || no >= NR_WP) {
+        printf("d: N must be a valid watchpoint number.\n");
+        return 0;
+    }
+
+    delete_watchpoint(no);
     return 0;
 }
 
