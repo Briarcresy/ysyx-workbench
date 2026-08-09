@@ -18,6 +18,7 @@
 #ifndef CONFIG_TARGET_AM
 #include <ctype.h>
 #include <errno.h>
+#include <sys/types.h>
 #endif
 
 void init_monitor(int, char*[]);
