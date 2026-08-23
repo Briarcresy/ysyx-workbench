@@ -1,5 +1,5 @@
-TOPNAME = top
-NXDC_FILES = constr/top.nxdc
+TOPNAME = sCPU
+NXDC_FILES = constr/*.nxdc
 INC_PATH ?=
 
 VERILATOR = verilator
@@ -46,11 +46,4 @@ run: $(BIN)
 clean:
 	rm -rf $(BUILD_DIR)
 
-include ../Makefile
-
-sim:
-	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	$(MAKE) run
-
-.PHONY: default all clean run sim
-
+.PHONY: default all clean run
