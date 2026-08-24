@@ -1,15 +1,16 @@
-module ALU (
-    input [7:0] A,
-    input [7:0] B,
-    input op,
-    output reg [7:0] res
+module ALU #(
+    DATA_WIDTH = 32
+) (
+    input      [DATA_WIDTH-1:0] src1,
+    input      [DATA_WIDTH-1:0] src2,
+    input      [           3:0] op,
+    output reg [DATA_WIDTH-1:0] result
 );
 
     always @(*) begin
         case (op)
-            1'b0: res = A + B;
-            1'b1: res = {7'd0, A != B};
-            default: res = 8'd0;
+            4'b0001: result = src1 + src2;
+            default: result = 0;
         endcase
     end
 

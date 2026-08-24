@@ -1,18 +1,16 @@
-module PC (
-    input clk,
-    input rst,
-    input [3:0] jp_addr,
-    input jp,
-    output reg [3:0] addr
+module PC #(
+    DATA_WIDTH = 32
+) (
+    input                       clk,
+    input                       rst,
+    output reg [DATA_WIDTH-1:0] pc
 );
 
     always @(posedge clk) begin
         if (rst) begin
-            addr <= 4'b0000;
-        end else if (jp) begin
-            addr <= jp_addr;
+            pc <= 0;
         end else begin
-            addr <= addr + 4'b0001;
+            pc <= pc + 4;
         end
     end
 

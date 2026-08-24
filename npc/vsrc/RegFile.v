@@ -1,28 +1,25 @@
-module RegFile (
-    input clk,
-    input rst,
-    output reg [7:0] rdata1,
-    output reg [7:0] rdata2,
-    input [1:0] raddr1,
-    input [1:0] raddr2,
-    input [1:0] waddr,
-    input [7:0] wdata,
-    input we
+module RegFile #(
+    ADDR_WIDTH = 4,
+    DATA_WIDTH = 32
+) (
+    input                   clk,
+    input                   we,
+    input  [ADDR_WIDTH-1:0] rs1,
+    rs2,
+    rd,
+    input  [DATA_WIDTH-1:0] R_rd,
+    output [DATA_WIDTH-1:0] R_rs1,
+    R_rs2
 );
 
-    reg [7:0] regs[0:3];
+    reg [DATA_WIDTH-1:0] R[0:2**ADDR_WIDTH-1];
 
-    assign rdata1 = regs[raddr1];
-    assign rdata2 = regs[raddr2];
+    assign R_rs1 = (rs1 == 0) ? 0 : R[rs1];
+    assign R_rs2 = (rs2 == 0) ? 0 : R[rs2];
 
     always @(posedge clk) begin
-        if (rst) begin
-            regs[0] <= 8'b00001010;
-            regs[1] <= 8'b00000000;
-            regs[2] <= 8'b00000000;
-            regs[3] <= 8'b00000000;
-        end else if (we) begin
-            regs[waddr] <= wdata;
+        if (we) begin
+            R[rd] <= R_rd;
         end
     end
 

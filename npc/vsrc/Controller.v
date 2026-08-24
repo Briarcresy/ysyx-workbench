@@ -1,19 +1,25 @@
 module Controller (
-    input [1:0] opcode,
-    input [7:0] alu_res,
-    output jp,
-    output reg_we,
-    output reg_wr_sel,
-    output reg_rd1_sel,
-    output alu_op,
-    output out
+    input  [6:0] opcode,
+    input  [2:0] funct3,
+    output       reg_we,
+    output [3:0] alu_op,
+    output       alu_src2_imm
 );
 
-    assign jp = (opcode == 2'b11 && alu_res == 8'b00000001);
-    assign reg_we = ~opcode[0];
-    assign reg_wr_sel = opcode[1];
-    assign reg_rd1_sel = opcode[1];
-    assign alu_op = opcode[1];
-    assign out = (opcode == 2'b01);
+    `define R_TYPE 7'b011_0011
+    `define I_TYPE 7'b001_0011
+    `define IL_TYPE 7'b000_0011 // I lw
+    `define IJ_TYPE 7'b110_0111 // I jalr
+    `define S_TYPE 7'b010_0011
+    `define B_TYPE 7'b110_0011
+    `define U_TYPE 7'b011_0111 // U lui
+    `define UA_TYPE 7'b001_0111 // U auipc
+    `define J_TYPE 7'b110_1111
+
+    wire addi = (opcode == `I_TYPE) && (funct3 == 3'b000);
+
+    assign reg_we = addi;
+    assign alu_op = addi ? 4'b0001 : 4'b0000;
+    assign alu_src2_imm = addi;
 
 endmodule
