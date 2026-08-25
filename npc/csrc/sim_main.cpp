@@ -4,9 +4,12 @@
 
 static VminirvCPU dut;
 static uint32_t instr_mem[1u << 15] = {
-    0x00500093, // addi x1, x0,  5
-    0xffe08113, // addi x2, x1, -2
-    0x00100013, // addi x0, x0,  1 (x0 must remain 0)
+    0x01400513, // 0x00: addi x10, x0, 20
+    0x010000e7, // 0x04: jalr x1,  x0, 16
+    0x00c000e7, // 0x08: jalr x1,  x0, 12
+    0x00c00067, // 0x0c: jalr x0,  x0, 12
+    0x00a50513, // 0x10: addi x10, x10, 10
+    0x00008067, // 0x14: jalr x0,  x1, 0
 };
 
 static uint32_t pmem_read(uint32_t pc)
@@ -20,7 +23,7 @@ static void print()
         static_cast<uint32_t>(dut.pc),
         static_cast<uint32_t>(dut.inst));
     if (dut.debug_wb_we) {
-        std::printf(", x%" PRIx32 " <- 0x%08" PRIx32,
+        std::printf(", x%" PRIu32 " <- %" PRIu32,
             static_cast<uint32_t>(dut.debug_wb_rd),
             static_cast<uint32_t>(dut.debug_wb_data));
     }
@@ -49,7 +52,7 @@ static void reset()
 int main()
 {
     reset();
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 8; ++i) {
         single_cycle();
     }
     print();

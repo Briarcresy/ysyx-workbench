@@ -3,7 +3,9 @@ module Controller (
     input  [2:0] funct3,
     output       reg_we,
     output [3:0] alu_op,
-    output       alu_src2_imm
+    output       alu_src1_pc,
+    output       alu_src2_imm,
+    output       jump
 );
 
     `define R_TYPE 7'b011_0011
@@ -16,10 +18,18 @@ module Controller (
     `define UA_TYPE 7'b001_0111 // U auipc
     `define J_TYPE 7'b110_1111
 
-    wire addi = (opcode == `I_TYPE) && (funct3 == 3'b000);
+    wire itype, jalr;
+    wire op_add;
 
-    assign reg_we = addi;
-    assign alu_op = addi ? 4'b0001 : 4'b0000;
-    assign alu_src2_imm = addi;
+    assign itype = (opcode == `I_TYPE);
+    assign jalr = (opcode == `IJ_TYPE);
+
+    assign op_add = (itype && funct3 == 3'b000) || jalr;
+
+    assign reg_we = itype || jalr;
+    assign alu_op = {3'b000, op_add};
+    assign alu_src1_pc = 0;
+    assign alu_src2_imm = itype || jalr;
+    assign jump = jalr;
 
 endmodule

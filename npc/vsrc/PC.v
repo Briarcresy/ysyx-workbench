@@ -3,6 +3,7 @@ module PC #(
 ) (
     input                       clk,
     input                       rst,
+    input      [DATA_WIDTH-1:0] npc,
     output reg [DATA_WIDTH-1:0] pc
 );
 
@@ -10,7 +11,7 @@ module PC #(
         if (rst) begin
             pc <= 0;
         end else begin
-            pc <= pc + 4;
+            pc <= npc;
         end
     end
 

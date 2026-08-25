@@ -15,35 +15,41 @@ module minirvCPU #(
     // 支持如下8条指令: add, addi, lui, lw, lbu, sw, sb, jalr
     // 其他的ISA细节与RV32I相同
 
+    wire [DATA_WIDTH-1:0] npc;
     wire [3:0] rs1, rs2, rd;
     wire [DATA_WIDTH-1:0] R_rs1, R_rs2, R_rd;
     wire [DATA_WIDTH-1:0] imm;
     wire [DATA_WIDTH-1:0] src1, src2;
     wire [DATA_WIDTH-1:0] result;
     wire [3:0] alu_op;
-    wire alu_src2_imm;
-    wire decoded_reg_we;
-    wire reg_we;
+    wire alu_src1_pc, alu_src2_imm, reg_we, jump;
+    wire [DATA_WIDTH-1:0] pc_plus_4;
 
     assign rs1 = inst[18:15];
     assign rs2 = inst[23:20];
     assign rd = inst[10:7];
-    assign reg_we = decoded_reg_we && !rst && (rd != 0);
+
+    assign pc_plus_4 = pc + 4;
+
+    assign npc = jump ? {result & 32'hffff_fffe} : pc_plus_4;
 
     PC #(
         .DATA_WIDTH(DATA_WIDTH)
     ) pc_reg (
         .clk(clk),
         .rst(rst),
+        .npc(npc),
         .pc (pc)
     );
 
     Controller controller (
         .opcode      (inst[6:0]),
         .funct3      (inst[14:12]),
-        .reg_we      (decoded_reg_we),
+        .reg_we      (reg_we),
         .alu_op      (alu_op),
-        .alu_src2_imm(alu_src2_imm)
+        .alu_src1_pc (alu_src1_pc),
+        .alu_src2_imm(alu_src2_imm),
+        .jump        (jump)
     );
 
     RegFile #(
@@ -76,12 +82,12 @@ module minirvCPU #(
         .imm (imm)
     );
 
-    assign src1 = R_rs1;
+    assign src1 = alu_src1_pc ? pc : R_rs1;
     assign src2 = alu_src2_imm ? imm : R_rs2;
-    assign R_rd = result;
+    assign R_rd = jump ? pc_plus_4 : result;
 
     assign debug_wb_we = reg_we;
     assign debug_wb_rd = rd;
-    assign debug_wb_data = result;
+    assign debug_wb_data = R_rd;
 
 endmodule
