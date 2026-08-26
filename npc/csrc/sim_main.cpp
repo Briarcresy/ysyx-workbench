@@ -1,4 +1,5 @@
 #include <VminirvCPU.h>
+#include <VminirvCPU__Dpi.h>
 #include <cstdint>
 #include <cstdio>
 
@@ -7,10 +8,11 @@ static uint32_t instr_mem[1u << 15] = {
     0x01400513, // 0x00: addi x10, x0, 20
     0x010000e7, // 0x04: jalr x1,  x0, 16
     0x00c000e7, // 0x08: jalr x1,  x0, 12
-    0x00c00067, // 0x0c: jalr x0,  x0, 12
+    0x00100073, // 0x0c: ebreak
     0x00a50513, // 0x10: addi x10, x10, 10
     0x00008067, // 0x14: jalr x0,  x1, 0
 };
+static bool halt = false;
 
 static uint32_t pmem_read(uint32_t pc)
 {
@@ -49,13 +51,17 @@ static void reset()
     dut.rst = 0;
 }
 
+extern "C" void npc_trap()
+{
+    halt = true;
+}
+
 int main()
 {
     reset();
-    for (int i = 0; i < 8; ++i) {
+    while (!halt) {
         single_cycle();
     }
-    print();
     dut.final();
     return 0;
 }

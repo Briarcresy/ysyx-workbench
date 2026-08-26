@@ -5,7 +5,8 @@ module Controller (
     output [3:0] alu_op,
     output       alu_src1_pc,
     output       alu_src2_imm,
-    output       jump
+    output       jump,
+    output       trap
 );
 
     `define R_TYPE 7'b011_0011
@@ -31,5 +32,6 @@ module Controller (
     assign alu_src1_pc = 0;
     assign alu_src2_imm = itype || jalr;
     assign jump = jalr;
+    assign trap = (opcode == 7'b111_0011);
 
 endmodule
