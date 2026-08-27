@@ -5,11 +5,11 @@ module RegFile #(
     input                   clk,
     input                   we,
     input  [ADDR_WIDTH-1:0] rs1,
-    rs2,
-    rd,
+    input  [ADDR_WIDTH-1:0] rs2,
+    input  [ADDR_WIDTH-1:0] rd,
     input  [DATA_WIDTH-1:0] R_rd,
     output [DATA_WIDTH-1:0] R_rs1,
-    R_rs2
+    output [DATA_WIDTH-1:0] R_rs2
 );
 
     reg [DATA_WIDTH-1:0] R[0:2**ADDR_WIDTH-1];

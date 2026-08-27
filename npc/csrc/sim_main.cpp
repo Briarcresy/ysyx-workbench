@@ -3,20 +3,33 @@
 #include <cstdint>
 #include <cstdio>
 
+#define PMEM_SIZE (1u << 20)
+
 static VminirvCPU dut;
-static uint32_t instr_mem[1u << 15] = {
-    0x01400513, // 0x00: addi x10, x0, 20
-    0x010000e7, // 0x04: jalr x1,  x0, 16
-    0x00c000e7, // 0x08: jalr x1,  x0, 12
-    0x00100073, // 0x0c: ebreak
-    0x00a50513, // 0x10: addi x10, x10, 10
-    0x00008067, // 0x14: jalr x0,  x1, 0
-};
+static uint8_t pmem[PMEM_SIZE];
+
 static bool halt = false;
 
-static uint32_t pmem_read(uint32_t pc)
+extern "C" int pmem_read(int raddr)
 {
-    return instr_mem[pc >> 2];
+    // 总是读取地址为`raddr & ~0x3u`的4字节返回
+    const int offset = raddr & ~0x3u;
+    return pmem[offset + 0] | pmem[offset + 1] << 8 | pmem[offset + 2] << 16 | pmem[offset + 3] << 24;
+}
+extern "C" void pmem_write(int waddr, int wdata, char wmask)
+{
+    const int offset = waddr & ~0x3u;
+    if (wmask & 0x1)
+        pmem[offset + 0] = wdata & 0xff;
+    if (wmask & 0x2)
+        pmem[offset + 1] = (wdata >> 8) & 0xff;
+    if (wmask & 0x4)
+        pmem[offset + 2] = (wdata >> 16) & 0xff;
+    if (wmask & 0x8)
+        pmem[offset + 3] = (wdata >> 24) & 0xff;
+    // 总是往地址为`waddr & ~0x3u`的4字节按写掩码`wmask`写入`wdata`
+    // `wmask`中每比特表示`wdata`中1个字节的掩码,
+    // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
 }
 
 static void print()
@@ -53,11 +66,30 @@ static void reset()
 
 extern "C" void npc_trap()
 {
+    std::printf("npc_trap: pc = 0x%08" PRIx32 ", inst = 0x%08" PRIx32 "\n",
+        static_cast<uint32_t>(dut.pc),
+        static_cast<uint32_t>(dut.inst));
     halt = true;
+}
+
+bool load_image(const char* filename)
+{
+    FILE* fp = std::fopen(filename, "rb");
+    assert(fp != nullptr);
+    std::fread(pmem, 1, sizeof(pmem), fp);
+    std::fclose(fp);
+    return true;
 }
 
 int main()
 {
+    load_image("/home/briarcresy/ysyx/ysyx-workbench/npc/images/mem.bin");
+    // halt at 0x00001218
+    // ebreak : 0x00100073
+    pmem[0x1218] = 0x73;
+    pmem[0x1219] = 0x00;
+    pmem[0x121a] = 0x10;
+    pmem[0x121b] = 0x00;
     reset();
     while (!halt) {
         single_cycle();
