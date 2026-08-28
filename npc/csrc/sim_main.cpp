@@ -19,6 +19,7 @@ static VminirvCPU dut;
 static uint8_t pmem[PMEM_SIZE];
 
 static bool halt = false;
+static int halt_code = 0;
 
 static size_t guest_to_host(uint32_t address)
 {
@@ -90,6 +91,7 @@ static void reset()
 
 extern "C" void npc_trap(int code)
 {
+    halt_code = code;
     if (!code)
         printf(ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) " at pc = 0x%08" PRIx32 "\n",
             static_cast<uint32_t>(dut.pc));
@@ -126,5 +128,5 @@ int main(int argc, char** argv)
         single_cycle();
     }
     dut.final();
-    return 0;
+    return halt_code;
 }
