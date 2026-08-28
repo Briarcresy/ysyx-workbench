@@ -9,7 +9,7 @@ module PC #(
 
     always @(posedge clk) begin
         if (rst) begin
-            pc <= 0;
+            pc <= 32'h8000_0000;
         end else begin
             pc <= npc;
         end

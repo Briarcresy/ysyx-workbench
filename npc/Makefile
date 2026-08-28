@@ -15,7 +15,7 @@ $(BIN): $(VSRCS) $(CSRCS)
 		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
 
 run: $(BIN)
-	$(BIN)
+	$(BIN) $(IMG)
 
 clean:
 	rm -rf $(BUILD_DIR)

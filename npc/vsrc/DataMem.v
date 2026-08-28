@@ -10,11 +10,11 @@ module DataMem #(
     output reg [DATA_WIDTH-1:0] rdata
 );
 
-    import "DPI-C" function int pmem_read(input int raddr);
+    import "DPI-C" function int unsigned pmem_read(input int unsigned raddr);
     import "DPI-C" function void pmem_write(
-        input int  waddr,
-        input int  wdata,
-        input byte wmask
+        input int unsigned waddr,
+        input int unsigned wdata,
+        input byte         wmask
     );
 
     always @(*) begin

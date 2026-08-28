@@ -17,7 +17,7 @@ module minirvCPU #(
 
     wire [DATA_WIDTH-1:0] npc;
     wire [3:0] rs1, rs2, rd;
-    wire [DATA_WIDTH-1:0] R_rs1, R_rs2;
+    wire [DATA_WIDTH-1:0] R_rs1, R_rs2, R_a0;
     reg  [DATA_WIDTH-1:0] R_rd;
     wire [DATA_WIDTH-1:0] imm;
     wire [DATA_WIDTH-1:0] src1, src2;
@@ -39,11 +39,11 @@ module minirvCPU #(
 
     assign npc = jump ? {result & 32'hffff_fffe} : pc_plus_4;
 
-    import "DPI-C" function void npc_trap();
+    import "DPI-C" function void npc_trap(input int code);
 
     always @(posedge clk) begin
         if (!rst && trap) begin
-            npc_trap();
+            npc_trap(R_a0);
         end
     end
 
@@ -92,7 +92,8 @@ module minirvCPU #(
         .rd   (rd),
         .R_rd (R_rd),
         .R_rs1(R_rs1),
-        .R_rs2(R_rs2)
+        .R_rs2(R_rs2),
+        .R_a0 (R_a0)
     );
 
     ALU #(
