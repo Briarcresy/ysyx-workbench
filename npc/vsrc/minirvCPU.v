@@ -3,8 +3,8 @@ module minirvCPU #(
 ) (
     input                   clk,
     input                   rst,
-    input  [DATA_WIDTH-1:0] inst,
     output [DATA_WIDTH-1:0] pc,
+    output [DATA_WIDTH-1:0] inst,
     output                  debug_wb_we,
     output [           3:0] debug_wb_rd,
     output [DATA_WIDTH-1:0] debug_wb_data
@@ -31,6 +31,11 @@ module minirvCPU #(
 
     wire [DATA_WIDTH-1:0] pc_plus_4;
 
+    import "DPI-C" function int unsigned pmem_read(input int unsigned raddr);
+    import "DPI-C" function void npc_trap(input int code);
+
+    assign inst = rst ? {DATA_WIDTH{1'b0}} : pmem_read(pc);
+
     assign rs1 = inst[18:15];
     assign rs2 = inst[23:20];
     assign rd = inst[10:7];
@@ -38,8 +43,6 @@ module minirvCPU #(
     assign pc_plus_4 = pc + 4;
 
     assign npc = jump ? {result & 32'hffff_fffe} : pc_plus_4;
-
-    import "DPI-C" function void npc_trap(input int code);
 
     always @(posedge clk) begin
         if (!rst && trap) begin

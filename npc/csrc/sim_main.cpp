@@ -69,7 +69,6 @@ static void print()
 
 static void single_cycle()
 {
-    dut.inst = pmem_read(dut.pc);
     dut.clk = 0;
     dut.eval();
 
